@@ -51,7 +51,7 @@ app.listen(port, () => {
 //     })
 
 function buildAndSendEmail(html, res) {
-  let emailTemplatePath = "./template/email-test-template.html";
+  let emailTemplatePath = "./templates/index.htm";
   // let sendFilePath = "c:/Users/eitan/Desktop/email-test.html";
   fs.readFile(emailTemplatePath, "utf8", (err, data) => {
     if (err) {
