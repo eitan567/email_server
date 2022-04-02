@@ -2,6 +2,7 @@
 
 "use strict";
 const nodemailer = require("nodemailer");
+const cheerio = require("cheerio");
 const fs = require("fs");
 const cors = require("cors");
 const express = require("express");
@@ -9,16 +10,15 @@ const app = express(),
   bodyParser = require("body-parser"),
   port = 3080;
 
+  
 app.use(
   cors({
     origin: "*",
   })
 );
-// place holder for the data
-// const users = ['u1','u2','u3'];
 
-app.use(bodyParser.json());
-
+app.use(bodyParser.json({limit: '50mb'}));
+app.use(bodyParser.urlencoded({limit: '50mb', extended: true}));    
 // app.get('/api/users', (req, res) => {
 //   console.log('api/users called!!!!')
 //   res.json(users);
@@ -60,7 +60,9 @@ function buildAndSendEmail(html, res) {
     }
 
     let fullEmail = data.replace("<--content-->", html);
-    sendEmail(fullEmail, res);
+    let emailDetailsObj = extractEmailDetails(fullEmail);
+    
+    sendEmail(emailDetailsObj.email,emailDetailsObj.attachments ,res);
     //   fs.writeFile(sendFilePath, this.fileContent, (err) => {
     //     if (err) {
     //       console.error(err);
@@ -70,12 +72,45 @@ function buildAndSendEmail(html, res) {
   });
 }
 
+function extractEmailDetails(email){
+  const $ = cheerio.load(email);
+
+  let result = {
+    email:null,
+    attachments:[]
+  };
+
+  let imagesElements = $('img');
+  
+  imagesElements.each((index, elem)=>{
+    let base64Image = extractBase64Image(elem.attribs.src);
+    let attachment =  {
+                        filename: "image" + index + ".png",
+                        content: Buffer.from(base64Image, "base64"),
+                        cid: "image" + index,
+                      };
+    result.attachments.push(attachment);
+    elem.attribs.src="cid:image" + index;
+  });
+
+  result.email = $.root().html();
+
+  return result;
+}
+
+function extractBase64Image(src){
+  if(src.indexOf('data:image/jpeg')>=0)
+    return src.replace('data:image/jpeg;base64,','')
+  else if(src.indexOf('data:image/png')>=0)
+    return src.replace('data:image/png;base64,','')
+}
+
 // fs.watch('c:/Users/eitan/Desktop/email-test.html', function() {
 //     //console.log("File changed!");
 //     sendEmail()
 // });
 
-function sendEmail(data, res) {
+function sendEmail(data,attachments, res) {
   // fs.readFile('c:/Users/eitan/Desktop/email-test.html', 'utf8' , (err, data) => {
   //     if (err) {
   //         console.error(err)
@@ -146,7 +181,7 @@ function sendEmail(data, res) {
             </html>`,
 
       // An array of attachments
-      attachments: [
+      attachments: attachments,//[
         // String attachment
         // {
         //     filename: 'notes.txt',
@@ -155,12 +190,11 @@ function sendEmail(data, res) {
         // },
 
         // Binary Buffer attachment
-        {
-          filename: "image1.png",
-          content: Buffer.from("", "base64"),
-
-          cid: "image1", // should be as unique as possible
-        },
+        // {
+        //   filename: "image1.png",
+        //   content: Buffer.from("", "base64"),
+        //   cid: "image1", // should be as unique as possible
+        // },
 
         // File Stream attachment
         // {
@@ -168,7 +202,7 @@ function sendEmail(data, res) {
         //     path: __dirname + '/assets/nyan.gif',
         //     cid: 'nyan@example.com' // should be as unique as possible
         // }
-      ],
+      // ],
 
       // list: {
       //     // List-Help: <mailto:admin@example.com?subject=help>

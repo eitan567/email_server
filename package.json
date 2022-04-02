@@ -10,6 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "axios": "^0.26.1",
+    "cheerio": "^1.0.0-rc.10",
     "chokidar": "^3.5.3",
     "cors": "^2.8.5",
     "eslint": "^8.12.0",
